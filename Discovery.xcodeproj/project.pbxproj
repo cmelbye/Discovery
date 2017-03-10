@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		86C9DEBF1E72632C005E8C90 /* BLEUser.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEBA1E72632C005E8C90 /* BLEUser.h */; };
+		86C9DEBF1E72632C005E8C90 /* BLEUser.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEBA1E72632C005E8C90 /* BLEUser.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		86C9DEC01E72632C005E8C90 /* BLEUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 86C9DEBB1E72632C005E8C90 /* BLEUser.m */; };
 		86C9DEC11E72632C005E8C90 /* Discovery.m in Sources */ = {isa = PBXBuildFile; fileRef = 86C9DEBC1E72632C005E8C90 /* Discovery.m */; };
 		86C9DEC31E72632C005E8C90 /* EasedValue.m in Sources */ = {isa = PBXBuildFile; fileRef = 86C9DEBE1E72632C005E8C90 /* EasedValue.m */; };
-		86C9DEC41E72633F005E8C90 /* Discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEB21E72616C005E8C90 /* Discovery.h */; };
-		86C9DEC51E726341005E8C90 /* EasedValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEBD1E72632C005E8C90 /* EasedValue.h */; };
+		86C9DEC41E72633F005E8C90 /* Discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEB21E72616C005E8C90 /* Discovery.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		86C9DEC51E726341005E8C90 /* EasedValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C9DEBD1E72632C005E8C90 /* EasedValue.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */

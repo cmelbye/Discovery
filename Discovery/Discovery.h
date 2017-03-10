@@ -10,7 +10,7 @@
 #import <UIKit/UIKit.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <CoreLocation/CoreLocation.h>
-#import "BLEUser.h"
+#import <Discovery/BLEUser.h>
 
 @interface Discovery : NSObject<CBCentralManagerDelegate, CBPeripheralManagerDelegate, CBPeripheralDelegate>
 

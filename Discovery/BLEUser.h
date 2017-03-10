@@ -9,7 +9,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <CoreLocation/CoreLocation.h>
-#import "EasedValue.h"
+#import <Discovery/EasedValue.h>
 
 @interface BLEUser : NSObject
 
