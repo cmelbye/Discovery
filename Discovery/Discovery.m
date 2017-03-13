@@ -8,6 +8,9 @@
 
 #import "Discovery.h"
 
+#define PERIPHERAL_RESTORE_IDENTIFIER @"866A5887-32A9-421C-9DE2-C0231B09A699"
+#define CENTRAL_RESTORE_IDENTIFIER @"46355B1F-DCBF-4EAF-A4D1-19795377A7AA"
+
 @interface Discovery()
 @property (nonatomic, copy) void (^usersBlock)(NSArray *users, BOOL usersChanged);
 @property (strong, nonatomic) NSTimer *timer;
@@ -93,7 +96,13 @@ static double bgStartTime = 0.0f;
     
     if(shouldAdvertise) {
         if (!self.peripheralManager)
-            self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:self.queue];
+            self.peripheralManager =
+            [[CBPeripheralManager alloc]
+             initWithDelegate:self
+             queue:self.queue
+             options:@{
+                       CBPeripheralManagerOptionRestoreIdentifierKey: PERIPHERAL_RESTORE_IDENTIFIER
+                       }];
     } else {
         if (self.peripheralManager) {
             [self.peripheralManager stopAdvertising];
@@ -111,7 +120,13 @@ static double bgStartTime = 0.0f;
     
     if(shouldDiscover) {
         if (!self.centralManager)
-            self.centralManager = [[CBCentralManager alloc] initWithDelegate:self queue:self.queue];
+            self.centralManager =
+            [[CBCentralManager alloc]
+             initWithDelegate:self
+             queue:self.queue
+             options:@{
+                       CBCentralManagerOptionRestoreIdentifierKey: CENTRAL_RESTORE_IDENTIFIER
+                       }];
         if (!self.timer)
             [self startTimer];
     } else {
@@ -186,26 +201,22 @@ static double bgStartTime = 0.0f;
 }
 
 - (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral error:(NSError *)error {
-    
+    NSLog(@"Peripheral manager did start advertising (error %@)", error);
 }
 
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral {
-    if(peripheral.state == CBPeripheralManagerStatePoweredOn) {
+    if(peripheral.state == CBManagerStatePoweredOn) {
         [self startAdvertising];
     }
-    else {
-        //NSLog(@"Peripheral manager state: %d", peripheral.state);
-    }
+    NSLog(@"Peripheral manager state: %ld", (long)peripheral.state);
 }
 
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central
 {
-    if (central.state == CBCentralManagerStatePoweredOn) {
+    if (central.state == CBManagerStatePoweredOn) {
         [self startDetecting];
     }
-    else {
-        //NSLog(@"Central manager state: %d", central.state);
-    }
+    NSLog(@"Central manager state: %ld", (long)central.state);
 }
 
 - (void)updateList {
@@ -279,7 +290,7 @@ static double bgStartTime = 0.0f;
                   RSSI:(NSNumber *)RSSI
 {
     NSString *username = advertisementData[CBAdvertisementDataLocalNameKey];
-    //NSLog(@"Discovered: %@ %@ at %@ -- %@", peripheral.name, peripheral.identifier, RSSI, username);
+    NSLog(@"Discovered: %@ %@ at %@ -- %@", peripheral.name, peripheral.identifier, RSSI, username);
     
     if(self.isInBackgroundMode) {
         double bgTime = (CFAbsoluteTimeGetCurrent() - bgStartTime);
@@ -311,14 +322,12 @@ static double bgStartTime = 0.0f;
             // we update our list for callback block
             [self updateList];
         }
-        else {
-            // nope we could not get the username from CBAdvertisementDataLocalNameKey,
-            // we have to connect to the peripheral and try to get the characteristic data
-            // add we will extract the username from characteristics.
-            
-            if(peripheral.state == CBPeripheralStateDisconnected) {
-                [self.centralManager connectPeripheral:peripheral options:nil];
-            }
+        if(peripheral.state == CBPeripheralStateDisconnected) {
+            [self.centralManager
+             connectPeripheral:peripheral
+             options:@{
+                       CBConnectPeripheralOptionNotifyOnConnectionKey: [NSNumber numberWithBool:YES],
+                       CBConnectPeripheralOptionNotifyOnDisconnectionKey: [NSNumber numberWithBool:YES]}];
         }
     }
     
@@ -343,11 +352,23 @@ static double bgStartTime = 0.0f;
     [peripheral discoverServices:@[self.uuid]];
 }
 
+- (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
+{
+    NSLog(@"Peripheral disconnected, requesting reconnect...");
+    [central connectPeripheral:peripheral options:nil];
+//    BLEUser *user = [self userWithPeripheralId:peripheral.identifier.UUIDString];
+//    NSLog(@"Peripheral Disconnected: %@", user);
+}
+
+- (void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary<NSString *,id> *)dict {
+    NSLog(@"Central manager will restore state: %@", dict);
+}
 
 #pragma mark - CBPeripheralDelegate
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error
 {
+    NSLog(@"Peripheral did discover services");
     // loop the services
     // since we are looking forn only one service, services array probably contains only one or zero item
     for (CBService *service in peripheral.services) {
@@ -357,15 +378,15 @@ static double bgStartTime = 0.0f;
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error
 {
-    //BLEUser *user = [self userWithPeripheralId:peripheral.identifier.UUIDString];
-    //NSLog(@"Did discover characteristics of: %@ - %@", user.username, service.characteristics);
+    BLEUser *user = [self userWithPeripheralId:peripheral.identifier.UUIDString];
+    NSLog(@"Did discover characteristics of: %@ - %@", user.username, service.characteristics);
     
     if (!error) {
         // loop through to find our characteristic
         for (CBCharacteristic *characteristic in service.characteristics) {
             if ([characteristic.UUID isEqual:self.uuid]) {
                 [peripheral readValueForCharacteristic:characteristic];
-                //[peripheral setNotifyValue:YES forCharacteristic:characteristic];
+                [peripheral setNotifyValue:YES forCharacteristic:characteristic];
             }
         }
     }
@@ -375,7 +396,7 @@ static double bgStartTime = 0.0f;
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
     NSString *valueStr = [[NSString alloc] initWithData:characteristic.value encoding:NSUTF8StringEncoding];
-    //NSLog(@"CBCharacteristic updated value: %@", valueStr);
+    NSLog(@"CBCharacteristic updated value: %@", valueStr);
     
     // if the value is not nil, we found our username!
     if(valueStr != nil) {
@@ -385,17 +406,27 @@ static double bgStartTime = 0.0f;
         
         [self updateList];
         
-        // cancel the subscription to our characteristic
-        [peripheral setNotifyValue:NO forCharacteristic:characteristic];
-        
-        // and disconnect from the peripehral
-        [self.centralManager cancelPeripheralConnection:peripheral];
+//        // cancel the subscription to our characteristic
+//        [peripheral setNotifyValue:NO forCharacteristic:characteristic];
+//        
+//        // and disconnect from the peripehral
+//        [self.centralManager cancelPeripheralConnection:peripheral];
     }
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
     NSLog(@"Characteristic Update Notification: %@", error);
+}
+
+- (void)peripheralDidUpdateName:(CBPeripheral *)peripheral {
+    NSLog(@"Peripheral has new name");
+}
+
+#pragma mark - CBPeripheralManagerDelegate
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral willRestoreState:(NSDictionary<NSString *,id> *)dict {
+    NSLog(@"Peripheral manager will restore state: %@", dict);
 }
 
 @end
